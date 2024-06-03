@@ -50,16 +50,20 @@ def test_f0(audio, fmin, fmax, sr, frame_length, win_length, hop_length, batch_s
     # Esta es la referencia, para que sepan la forma que tiene que tener el dato de salida y los valores de f0 que debería darles (aproximadamente)
     f0_crepe_ref = calc_f0_ref(audio, sr, hop_length, fmin, fmax, 'full', batch_size, device, center)[0]
     # Acá viene su propuesta, usen esto para verificar con un audio de prueba que su algoritmo respeta la forma del dato de salida y que los valores que les da no estén muy lejos de la referencia
-    f0_propuesta = calc_f0_propuesta(args_in)
+  #  f0_propuesta = calc_f0_propuesta(args_in)
     # Acá viene su propuesta para el cálculo de loudness. Recuerden revisar los comentarios que dejé en la función correspondiente.
-    loud_propuesta = calc_loudness(args_in)
+  #  loud_propuesta = calc_loudness(args_in)
     
-def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
-                  range_db=_DB_RANGE,ref_db=_REF_DB,center=False):
+#def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
+ #                 range_db=_DB_RANGE,ref_db=_REF_DB,center=False):
     # acá viene su función de cálculo de loudness, datos importantes:
     # *el resultado que sale de acá tiene largo igual a la cantidad de frames que representan al audio de entrada.
     # *el resultado está en dBs normalizados y ponderados A (arranquen por ahí, después prueben no ponderar o ponderar distinto a ver qué pasa). 
 
-audio, sr = sf.read('test_audio.wav')
-audio = audio[50000:100000]
-test_f0(audio, 50, 2000, sr, 2048, 1024, HOP_SIZE, 128, 'cpu')
+audio, sr = sf.read("test_audio.wav")
+print(len(audio))
+audio = audio[1500000:1600000]
+print(len(audio))
+#f0 = test_f0(audio, 50, 2000, sr, 2048, 1024, HOP_SIZE, 128, 'cpu')
+f0_crepe = calc_f0_ref(audio, sr, HOP_SIZE, 50, 2000, "full", 128, 'cpu')
+f0_pyin = calc_f0_pyin(audio, 50, 2000, sr, 2048, 1024, HOP_SIZE)

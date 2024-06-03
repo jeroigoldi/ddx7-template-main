@@ -23,9 +23,28 @@ def calc_f0(audio, rate, hop_size,fmin,fmax,model,
       pad = n_samples_final - n_samples_initial
       audio = np.pad(audio, ((0, pad),), "constant")
     
-    # acá va su código
-    	
-    return f0
+    audio = torch.from_numpy(audio).unsqueeze(0).float().to(device)
+    crepe_tuple = torchcrepe.predict(audio,
+                        rate,
+                        hop_size,
+                        fmin,
+                        fmax,
+                        model,
+                        return_periodicity=True,
+                        batch_size=batch_size,
+                        device=device,
+                        pad=center)
+    
+    f0 = crepe_tuple[0]
+    confidence = crepe_tuple[1]
+    if center is True:
+      f0 = f0[:,0:-1] #Discard the last sample
+      confidence = confidence[:,0:-1] #Discard the last sample
+
+    f0 = f0.squeeze(0).cpu().numpy()
+    confidence = confidence.squeeze(0).cpu().numpy()
+
+    return f0,confidence
 
 def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
                   range_db=_DB_RANGE,ref_db=_REF_DB,center=False):
@@ -41,10 +60,51 @@ def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
         n_samples_final = (n_frames - 1) * hop_size + n_fft
         pad = n_samples_final - n_samples_initial
         audio = np.pad(audio, ((0, pad),), "constant")
+    spectra = librosa.stft(
+        audio, n_fft=n_fft, hop_length=hop_size, center=center).T
+
+    # Compute power
+    amplitude = np.abs(spectra)
+    amin = 1e-20  # Avoid log(0) instabilities.
+    power_db = np.log10(np.maximum(amin, amplitude))
+    power_db *= 20.0
+
+    # Perceptual weighting.
+    frequencies = librosa.fft_frequencies(sr=rate, n_fft=n_fft)
+    a_weighting = librosa.A_weighting(frequencies)[np.newaxis, :]
+    loudness = power_db + a_weighting
+
+    # Set dynamic range.
+    loudness -= ref_db
+    loudness = np.maximum(loudness, -range_db)
+
+    # Average over frequency bins. (loudness is taken from the fft dimension!)
+    mean_loudness_db = np.mean(loudness, axis=-1)
+    return mean_loudness_db.astype(np.float32)
+
+'''
+RMS POWER COMPUTATION.
+'''
+
+
+
+#def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
+#                  range_db=_DB_RANGE,ref_db=_REF_DB,center=False):
+#    np.seterr(divide='ignore')
+
+#    """Compute loudness, add to example (ref is white noise, amplitude=1)."""
+    # Copied from magenta/ddsp/spectral_ops.py
+    # Get magnitudes.
+#    if center is False:
+        # Add padding to the end
+#        n_samples_initial = int(audio.shape[-1])
+#        n_frames = int(np.ceil(n_samples_initial / hop_size))
+#        n_samples_final = (n_frames - 1) * hop_size + n_fft
+#        pad = n_samples_final - n_samples_initial
+#        audio = np.pad(audio, ((0, pad),), "constant")
     
     # acá va su código
-    
-    return loudness
+    #return loudness
 '''
 RMS POWER COMPUTATION.
 '''
