@@ -82,8 +82,25 @@ def mean_std_loudness(dataset):
         std += (l.std().item() - std) / n
     return mean, std
 
-
 def multiscale_fft(signal, scales, overlap):
+    stfts = []
+    for s in scales:
+        S = torch.stft(
+            signal,
+            s,
+            int(s * (1 - overlap)),
+            s,
+            torch.hann_window(s).to(signal),
+            True,
+            normalized=True,
+            return_complex=True,
+        ).abs()
+        stfts.append(S)
+    return stfts
+
+
+
+#def multiscale_fft(signal, scales, overlap):
     """
     Función para calcular las STFTs de diferente resolución.
     Parametros:
@@ -96,7 +113,7 @@ def multiscale_fft(signal, scales, overlap):
 
     # acá viene su código
     
-    return stfts
+#    return stfts
 
 
 def resample(x, factor: int):
@@ -199,12 +216,12 @@ def harmonic_synth(pitch, amplitudes, sampling_rate,use_safe_cumsum=False):
     signal = (torch.sin(omegas) * amplitudes).sum(-1, keepdim=True)
     return signal
 
-OP6=5 # oscilador 6
-OP5=4 # oscilador 5
-OP4=3 # oscilador 4
-OP3=2 # oscilador 3
-OP2=1 # oscilador 2
-OP1=0 # oscilador 1
+#OP6=5 # oscilador 6
+#OP5=4 # oscilador 5
+#OP4=3 # oscilador 4
+#OP3=2 # oscilador 3
+#OP2=1 # oscilador 2
+#OP1=0 # oscilador 1
 
 
 '''
@@ -213,27 +230,136 @@ PATCH NAME: STRINGS 1
 OP6->OP5->OP4->OP3 |
        (R)OP2->OP1 |->out
 '''
-def fm_string_synth(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
-    '''
-    Síntesis FM siguiendo el path de violín del DDX7.
-    Parámetros:
-    	pitch: frecuencia fundamental de la ventana que se está analizando. Este parámetro es calculado en el bloque de cálculo de la frecuencia fundamental.
-    	ol: nivel del salida del oscilador (acá entra el índice de modulación, calculado por la red). Este parámetro es estimado por la red neuronal.
-    	sampling_rate: frecuencia de muestreo del audio, 16 kHz en nuestro caso.
-    	max_ol: máximo nivel de salida del oscilador (ya está contemplado).
-    	use_safe_cumsum: leer el docstring de la función correspondiente.	
-    Salidas:
-        out: salida del patch.
-    '''
+#def fm_string_synth(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
+#    '''
+#    Síntesis FM siguiendo el path de violín del DDX7.
+#    Parámetros:
+#    	pitch: frecuencia fundamental de la ventana que se está analizando. Este parámetro es calculado en el bloque de cálculo de la frecuencia fundamental.
+#    	ol: nivel del salida del oscilador (acá entra el índice de modulación, calculado por la red). Este parámetro es estimado por la red neuronal.
+#    	sampling_rate: frecuencia de muestreo del audio, 16 kHz en nuestro caso.
+#    	max_ol: máximo nivel de salida del oscilador (ya está contemplado).
+#    	use_safe_cumsum: leer el docstring de la función correspondiente.	
+#    Salidas:
+#        out: salida del patch.
+#    '''
 
-    if(use_safe_cumsum==True):
-        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
-    else:
-        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
+#    if(use_safe_cumsum==True):
+#        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
+#    else:
+#        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
     
     # omega = frec del oscilador
     # acá viene su código
 
 
-    return out_fm_synth
+ #   return out_fm_synth
 
+
+OP6=5
+OP5=4
+OP4=3
+OP3=2
+OP2=1
+OP1=0
+
+def fm_2stack2(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
+
+    if(use_safe_cumsum==True):
+        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
+    else:
+        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
+
+    # Torch unsqueeze with dim -1 adds a new dimension at the end of ol to match phases.
+
+    op4_phase =  fr[OP4] * omega
+    op4_output = torch.unsqueeze(ol[:,:,OP4], dim=-1) * torch.sin(op4_phase)
+
+    op3_phase =  fr[OP3] * omega + 2 * np.pi * op4_output
+    op3_output = torch.unsqueeze(ol[:,:,OP3], dim=-1) * torch.sin(op3_phase) # output of stack of 2
+
+    op2_phase =  fr[OP2] * omega
+    op2_output = torch.unsqueeze(ol[:,:,OP2], dim=-1) * torch.sin(op2_phase)
+
+    op1_phase =  fr[OP1] * omega + 2 * np.pi * op2_output
+    op1_output = torch.unsqueeze(ol[:,:,OP1], dim=-1) * torch.sin(op1_phase) # output of stack of 2
+
+    return (op3_output + op1_output)/max_ol
+
+def fm_1stack2(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
+
+    if(use_safe_cumsum==True):
+        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
+    else:
+        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
+
+    # Torch unsqueeze with dim -1 adds a new dimension at the end of ol to match phases.
+
+    op2_phase =  fr[OP2] * omega
+    op2_output = torch.unsqueeze(ol[:,:,OP2], dim=-1) * torch.sin(op2_phase)
+
+    op1_phase =  fr[OP1] * omega + 2 * np.pi * op2_output
+    op1_output = torch.unsqueeze(ol[:,:,OP1], dim=-1) * torch.sin(op1_phase) # output of stack of 2
+
+    return op1_output/max_ol
+
+
+def fm_1stack4(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
+
+    if(use_safe_cumsum==True):
+        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
+    else:
+        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
+
+    # Torch unsqueeze with dim -1 adds a new dimension at the end of ol to match phases.
+
+    op4_phase =  fr[OP4] * omega
+    op4_output = torch.unsqueeze(ol[:,:,OP4], dim=-1) * torch.sin(op4_phase)
+
+    op3_phase =  fr[OP3] * omega + 2 * np.pi * op4_output
+    op3_output = torch.unsqueeze(ol[:,:,OP3], dim=-1) * torch.sin(op3_phase) # output of stack of 4
+
+    op2_phase =  fr[OP2] * omega + 2 * np.pi * op3_output
+    op2_output = torch.unsqueeze(ol[:,:,OP2], dim=-1) * torch.sin(op2_phase)
+
+    op1_phase =  fr[OP1] * omega + 2 * np.pi * op2_output
+    op1_output = torch.unsqueeze(ol[:,:,OP1], dim=-1) * torch.sin(op1_phase) # output of stack of 2
+
+    return op1_output/max_ol
+
+
+'''
+String FM Synth - with phase wrapping (it does not change behaviour)
+PATCH NAME: STRINGS 1
+OP6->OP5->OP4->OP3 |
+       (R)OP2->OP1 |->out
+'''
+
+
+
+def fm_string_synth(pitch, ol, fr, sampling_rate,max_ol,use_safe_cumsum=False):
+
+    if(use_safe_cumsum==True):
+        omega = cumsum_nd(2 * np.pi * pitch / sampling_rate, 2*np.pi)
+    else:
+        omega = torch.cumsum(2 * np.pi * pitch / sampling_rate, 1)
+
+    # Torch unsqueeze with dim -1 adds a new dimension at the end of ol to match phases.
+    op6_phase =  fr[OP6] * omega
+    op6_output = torch.unsqueeze(ol[:,:,OP6], dim=-1) * torch.sin(op6_phase % (2*np.pi))
+
+    op5_phase =  fr[OP5] * omega + 2 * np.pi * op6_output
+    op5_output = torch.unsqueeze(ol[:,:,OP5], dim=-1)*torch.sin(op5_phase % (2*np.pi))
+
+    op4_phase =  fr[OP4] * omega + 2 * np.pi * op5_output
+    op4_output = torch.unsqueeze(ol[:,:,OP4], dim=-1) * torch.sin(op4_phase % (2*np.pi))
+
+    op3_phase =  fr[OP3] * omega + 2 * np.pi * op4_output
+    op3_output = torch.unsqueeze(ol[:,:,OP3], dim=-1) * torch.sin(op3_phase % (2*np.pi)) # output of stack of 4
+
+    op2_phase =  fr[OP2] * omega
+    op2_output = torch.unsqueeze(ol[:,:,OP2], dim=-1) * torch.sin(op2_phase % (2*np.pi))
+
+    op1_phase =  fr[OP1] * omega + 2 * np.pi * op2_output
+    op1_output = torch.unsqueeze(ol[:,:,OP1], dim=-1) * torch.sin(op1_phase % (2*np.pi)) # output of stack of 2
+
+    return (op3_output + op1_output)/max_ol
