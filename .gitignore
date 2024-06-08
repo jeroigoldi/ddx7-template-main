@@ -2,9 +2,18 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.dll
+DLLs/
+*.exe
+*.pdb
 
 # C extensions
 *.so
+*.h
+
+# Data
+data/
+files/
 
 # Distribution / packaging
 .Python
@@ -17,16 +26,30 @@ Dataset_URMP/
 eggs/
 .eggs/
 lib/
+libs/
+library/
 lib64/
 parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
+share/
+include/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+LICENSE_PYTHON.txt
+Scripts/
+Tools/
+
+
+# VS Code
+.vscode/
+
+# Conda
+conda-meta/
+etc/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
