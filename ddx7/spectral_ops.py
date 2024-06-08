@@ -82,12 +82,6 @@ def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
     mean_loudness_db = np.mean(loudness, axis=-1)
     return mean_loudness_db.astype(np.float32)
 
-'''
-RMS POWER COMPUTATION.
-'''
-
-
-
 #def calc_loudness(audio, rate, n_fft=_LD_N_FFT, hop_size=64,
 #                  range_db=_DB_RANGE,ref_db=_REF_DB,center=False):
 #    np.seterr(divide='ignore')

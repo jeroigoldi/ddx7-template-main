@@ -124,12 +124,12 @@ hydra:
         exclude_keys: []
   runtime:
     version: 1.1.1
-    cwd: /home/marzik/Documents/UNTREF/tp_pds
+    cwd: C:\Users\igold\Desktop\DSP\TP\Code\ddx7-template-main
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /home/marzik/Documents/UNTREF/tp_pds/recipes
+    - path: C:\Users\igold\Desktop\DSP\TP\Code\ddx7-template-main\recipes
       schema: file
       provider: main
     - path: ''
